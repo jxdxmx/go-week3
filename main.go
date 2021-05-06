@@ -6,10 +6,31 @@ import (
 	"fmt"
 	"golang.org/x/sync/errgroup"
 	"net/http"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 )
 
+func main2() {
+	var c = make(chan os.Signal)
+	go func() {
+		go func() {
+			for {
+				signal.Notify(c, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGABRT)
+				s := <-c
+				txt := s.String()
+				if txt == "interrupt" || txt == "quit" || txt == "aborted" ||
+					txt == "killed" || txt == "terminated" {
+					fmt.Println("sig:", txt)
+					break
+				}
+			}
+		}()
+	}()
+	time.Sleep(5 * time.Second)
+}
 func main() {
 	g, ctx := errgroup.WithContext(context.Background())
 
@@ -52,46 +73,47 @@ func main() {
 		}
 	})
 	g.Go(func() (err error) {
-		//var once = sync.Once{}
-		//c := make(chan os.Signal)
-		//for {
-		//	select {
-		//	case <-ctx.Done():
-		//		return errors.New("ctx done ..222")
-		//	default:
-		//		once.Do(func() {
-		//			for {
-		//				//signal.Notify(c, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGABRT)
-		//				s := <-c
-		//				txt := s.String()
-		//				if txt == "interrupt" || txt == "quit" || txt == "aborted" ||
-		//					txt == "killed" || txt == "terminated" {
-		//					fmt.Println("sig:", txt)
-		//					err = errors.New("sig end")
-		//					break
-		//				}
-		//			}
-		//		})
-		//		if err != nil {
-		//			return err
-		//		}
-		//		time.Sleep(time.Second)
-		//	}
-		//}
+		var once = sync.Once{}
+		c := make(chan os.Signal)
 		for {
 			select {
 			case <-ctx.Done():
-				err = errors.New("ctx done 222")
+				return errors.New("ctx done ..222")
 			default:
-				go func() {
-					time.Sleep(time.Second * 5)
-					err = errors.New("test error")
-				}()
-			}
-			if err != nil {
-				return err
+				once.Do(func() {
+					for {
+						signal.Notify(c, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGABRT)
+						s := <-c
+						txt := s.String()
+						//fmt.Println("sig111:", txt)
+						if txt == "interrupt" || txt == "quit" || txt == "aborted" ||
+							txt == "killed" || txt == "terminated" {
+							fmt.Println("sig222", txt)
+							err = errors.New("sig end")
+							break
+						}
+					}
+				})
+				if err != nil {
+					return err
+				}
+				time.Sleep(time.Second)
 			}
 		}
+		//for {
+		//	select {
+		//	case <-ctx.Done():
+		//		err = errors.New("ctx done 222")
+		//	default:
+		//		go func() {
+		//			time.Sleep(time.Second * 5)
+		//			err = errors.New("test error")
+		//		}()
+		//	}
+		//	if err != nil {
+		//		return err
+		//	}
+		//}
 	})
 	err := g.Wait()
 	fmt.Println("err group end, result:", err)
