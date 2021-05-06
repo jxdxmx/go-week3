@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"golang.org/x/sync/errgroup"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 )
@@ -39,6 +38,7 @@ func main() {
 		for {
 			select {
 			case <-ctx.Done():
+				fmt.Println("http go end")
 				return errors.New("ctx done ..111")
 			default:
 				go once.Do(func() {
@@ -52,30 +52,44 @@ func main() {
 		}
 	})
 	g.Go(func() (err error) {
-		var once = sync.Once{}
-		c := make(chan os.Signal)
+		//var once = sync.Once{}
+		//c := make(chan os.Signal)
+		//for {
+		//	select {
+		//	case <-ctx.Done():
+		//		return errors.New("ctx done ..222")
+		//	default:
+		//		once.Do(func() {
+		//			for {
+		//				//signal.Notify(c, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGABRT)
+		//				s := <-c
+		//				txt := s.String()
+		//				if txt == "interrupt" || txt == "quit" || txt == "aborted" ||
+		//					txt == "killed" || txt == "terminated" {
+		//					fmt.Println("sig:", txt)
+		//					err = errors.New("sig end")
+		//					break
+		//				}
+		//			}
+		//		})
+		//		if err != nil {
+		//			return err
+		//		}
+		//		time.Sleep(time.Second)
+		//	}
+		//}
 		for {
 			select {
 			case <-ctx.Done():
-				return errors.New("ctx done ..222")
+				err = errors.New("ctx done 222")
 			default:
-				once.Do(func() {
-					for {
-						//signal.Notify(c, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGABRT)
-						s := <-c
-						txt := s.String()
-						if txt == "interrupt" || txt == "quit" || txt == "aborted" ||
-							txt == "killed" || txt == "terminated" {
-							fmt.Println("sig:", txt)
-							err = errors.New("sig end")
-							break
-						}
-					}
-				})
-				if err != nil {
-					return err
-				}
-				time.Sleep(time.Second)
+				go func() {
+					time.Sleep(time.Second * 5)
+					err = errors.New("test error")
+				}()
+			}
+			if err != nil {
+				return err
 			}
 		}
 	})
